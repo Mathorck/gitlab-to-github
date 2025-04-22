@@ -24,20 +24,26 @@ $gitlabRepos = Get-Content -Path $repositoriesFile
 foreach ($gitlabRepoUrl in $gitlabRepos) {
     # Extraire le nom du dépôt à partir de l'URL GitLab
     $repoName = $gitlabRepoUrl.Split('/')[-1].Replace(".git", "")
-    $githubRepoUrl = "https://github.com/$githubUsername/$repoName.git"
+    $githubRepoUrl = "https://${githubUsername}:$githubToken@github.com/$githubUsername/$repoName.git"
     $githubRepoApiUrl = "$githubApiUrl/$repoName"
 
-    Write-Host "Traitement du dépôt : $repoName"
+    Write-Host "Traitement du depot : $repoName"
 
-    # Cloner le dépôt GitLab en mode miroir
-    git clone --mirror $gitlabRepoUrl
+    # Vérifier si le répertoire existe déjà
+    if (Test-Path $repoName) {
+        Write-Host "Le repertoire existe deja. Suppression du repertoire precedent."
+        Remove-Item -Recurse -Force $repoName
+    }
+
+    # Cloner le dépôt GitLab en mode standard (sans --mirror)
+    git clone $gitlabRepoUrl
 
     # Vérifier si le répertoire cloné existe
     if (Test-Path $repoName) {
         # Aller dans le répertoire cloné
         Set-Location -Path $repoName
     } else {
-        Write-Host "Le répertoire cloné n'a pas été trouvé : $repoName"
+        Write-Host "Le répertoire clone n'a pas ete trouve : $repoName"
         continue
     }
 
@@ -47,13 +53,18 @@ foreach ($gitlabRepoUrl in $gitlabRepos) {
     } -ErrorAction SilentlyContinue
 
     if ($response) {
-        Write-Host "Le dépôt existe déjà sur GitHub. Mise à jour des changements..."
-        # Si le dépôt existe, on va simplement commiter les derniers changements
+        Write-Host "Le depot existe deja sur GitHub. Mise a jour des changements..."
+
+        # Forcer un ajout et un commit pour s'assurer que tout est bien pris en compte
         git add -A
-        git commit -m "Mise à jour du dépôt avec les derniers changements"
-        git push origin main  # Remplacer 'main' par la branche principale si nécessaire
+        git commit -m "Mise a jour du depot avec les derniers changements" --allow-empty  # Utiliser --allow-empty pour forcer un commit même sans modifications locales
+        
+        # Ajouter le remote GitHub et pousser les données **vers GitHub uniquement**
+        git remote remove origin  # Retirer le remote GitLab
+        git remote add origin $githubRepoUrl  # Ajouter le remote GitHub
+        git push origin main --force  # Remplacer 'main' par 'master' ou la branche principale de ton dépôt
     } else {
-        Write-Host "Le dépôt n'existe pas encore sur GitHub. Création du dépôt..."
+        Write-Host "Le depot n'existe pas encore sur GitHub. Creation du depot..."
         # Si le dépôt n'existe pas, créer un nouveau dépôt GitHub via l'API
         $body = @{
             name = $repoName
@@ -65,9 +76,12 @@ foreach ($gitlabRepoUrl in $gitlabRepos) {
             "Content-Type" = "application/json"
         } -Body $body
 
-        # Ajouter le remote GitHub et pousser les données
-        git remote add github $githubRepoUrl
-        git push --mirror github
+        # Ajouter le remote GitHub et pousser les données **vers GitHub uniquement**
+        git remote add origin $githubRepoUrl
+
+        # Forcer l'initialisation de la branche principale
+        git branch -M main  # Assurer que la branche 'main' est utilisée
+        git push --set-upstream origin main --force  # Pousser vers GitHub
     }
 
     # Retourner au répertoire parent
@@ -79,4 +93,4 @@ foreach ($gitlabRepoUrl in $gitlabRepos) {
     }
 }
 
-Write-Host "Tous les dépôts ont été traités."
+Write-Host "Tous les depots ont ete traites."
