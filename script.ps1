@@ -32,8 +32,14 @@ foreach ($gitlabRepoUrl in $gitlabRepos) {
     # Cloner le dépôt GitLab en mode miroir
     git clone --mirror $gitlabRepoUrl
 
-    # Aller dans le répertoire cloné
-    Set-Location -Path $repoName
+    # Vérifier si le répertoire cloné existe
+    if (Test-Path $repoName) {
+        # Aller dans le répertoire cloné
+        Set-Location -Path $repoName
+    } else {
+        Write-Host "Le répertoire cloné n'a pas été trouvé : $repoName"
+        continue
+    }
 
     # Vérifier si le dépôt existe déjà sur GitHub via l'API
     $response = Invoke-RestMethod -Uri $githubRepoApiUrl -Method Get -Headers @{
@@ -45,7 +51,7 @@ foreach ($gitlabRepoUrl in $gitlabRepos) {
         # Si le dépôt existe, on va simplement commiter les derniers changements
         git add -A
         git commit -m "Mise à jour du dépôt avec les derniers changements"
-        git push origin master  # Remplacer 'master' par la branche principale si nécessaire
+        git push origin main  # Remplacer 'main' par la branche principale si nécessaire
     } else {
         Write-Host "Le dépôt n'existe pas encore sur GitHub. Création du dépôt..."
         # Si le dépôt n'existe pas, créer un nouveau dépôt GitHub via l'API
@@ -68,7 +74,9 @@ foreach ($gitlabRepoUrl in $gitlabRepos) {
     Set-Location -Path ..
 
     # Supprimer le répertoire cloné localement (optionnel)
-    Remove-Item -Recurse -Force $repoName
+    if (Test-Path $repoName) {
+        Remove-Item -Recurse -Force $repoName
+    }
 }
 
 Write-Host "Tous les dépôts ont été traités."
