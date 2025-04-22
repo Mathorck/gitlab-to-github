@@ -57,7 +57,7 @@ foreach ($gitlabRepoUrl in $gitlabRepos) {
 
         # Forcer un ajout et un commit pour s'assurer que tout est bien pris en compte
         git add -A
-        git commit -m "Mise a jour du depot avec les derniers changements" --allow-empty  # Utiliser --allow-empty pour forcer un commit même sans modifications locales
+        git commit -m "Update from school gitlab" --allow-empty  # Utiliser --allow-empty pour forcer un commit même sans modifications locales
         
         # Ajouter le remote GitHub et pousser les données **vers GitHub uniquement**
         git remote remove origin  # Retirer le remote GitLab
